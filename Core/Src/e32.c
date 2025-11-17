@@ -5,6 +5,8 @@
 uint8_t LoRa_RX_Buffer[64];
 char rx_line[RX_LINE_MAX];
 uint8_t rx_idx = 0;
+// Вказуємо, що модуль працює через huart1 за замовчуванням
+UART_HandleTypeDef *E32_UART = &huart1;
 
 void E32_WaitAUX(void)
 {
@@ -46,14 +48,14 @@ uint8_t E32_IsReady(void)
 void E32_SendString(char *str)
 {
     while(!E32_IsReady()) HAL_Delay(5);
-    HAL_UART_Transmit(&huart1, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
 }
 
 // --- Відправка одного байта ---
 void E32_SendByte(uint8_t data)
 {
     while(!E32_IsReady()) HAL_Delay(5);
-    HAL_UART_Transmit(&huart1, &data, 1, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, &data, 1, HAL_MAX_DELAY);
 }
 // Callback — викликається при кожному прийнятому байті
 uint8_t Packet[64];
@@ -99,7 +101,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
             rx_line[rx_idx++] = b;
         }
 
-        HAL_UART_Receive_IT(&huart1, LoRa_RX_Buffer, 1);
+        HAL_UART_Receive_IT(E32_UART, LoRa_RX_Buffer, 1);
     }
 }
 
@@ -143,7 +145,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //            rx_line[rx_idx++] = b;
 //        }
 //
-//        HAL_UART_Receive_IT(&huart1, LoRa_RX_Buffer, 1);
+//        HAL_UART_Receive_IT(E32_UART, LoRa_RX_Buffer, 1);
 //    }
 //}
 //
@@ -176,7 +178,7 @@ void oled_print_char(char c)
 uint8_t E32_ReadRSSI(void)
 {
     uint8_t buffer[128];
-    int len = HAL_UART_Receive(&huart1, buffer, sizeof(buffer), 50);
+    int len = HAL_UART_Receive(E32_UART, buffer, sizeof(buffer), 50);
     if(len > 0)
     {
         return buffer[len-1]; // останній байт – RSSI
@@ -191,10 +193,10 @@ void E32_ReadConfig(uint8_t *cfg)
     HAL_Delay(80);
 
     E32_WaitAUX();
-    HAL_UART_Transmit(&huart1, cmd, 3, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, cmd, 3, HAL_MAX_DELAY);
 
     E32_WaitAUX();
-    HAL_UART_Receive(&huart1, cfg, 6, HAL_MAX_DELAY);
+    HAL_UART_Receive(E32_UART, cfg, 6, HAL_MAX_DELAY);
 
     E32_SetMode(E32_MODE_NORMAL);
 }
@@ -207,7 +209,7 @@ void E32_ResetToFactory(void)
     HAL_Delay(80);
     E32_WaitAUX();
 
-    HAL_UART_Transmit(&huart1, cmd, 3, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, cmd, 3, HAL_MAX_DELAY);
     E32_WaitAUX(); // чекаємо завершення перезапису
 
     E32_SetMode(E32_MODE_NORMAL);
@@ -224,7 +226,7 @@ void E32_SetDefaultConfig(void)
     HAL_Delay(200);
 
     // --- Надсилаємо дефолтну конфігурацію ---
-    HAL_UART_Transmit(&huart1, default_cfg, 6, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, default_cfg, 6, HAL_MAX_DELAY);
     E32_WaitAUX();   // чекаємо завершення запису
     HAL_Delay(200);
     // --- Повертаємо модуль у нормальний режим ---
@@ -247,10 +249,10 @@ void E32_EnableRSSI(void)
     HAL_Delay(80);
     E32_WaitAUX();
 
-    HAL_UART_Transmit(&huart1, cmd, 3, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, cmd, 3, HAL_MAX_DELAY);
     E32_WaitAUX();
 
-    int len = HAL_UART_Receive(&huart1, cfg, 6, 200);
+    int len = HAL_UART_Receive(E32_UART, cfg, 6, 200);
     printf("READ len=%d  cfg: %02X %02X %02X %02X %02X %02X\n",
             len, cfg[0], cfg[1], cfg[2], cfg[3], cfg[4], cfg[5]);
 
@@ -264,7 +266,7 @@ void E32_EnableRSSI(void)
     cfg[3] |= 0x01;   // RSSI enable
 
     // === WRITE CONFIG ===
-    HAL_UART_Transmit(&huart1, cfg, 6, HAL_MAX_DELAY);
+    HAL_UART_Transmit(E32_UART, cfg, 6, HAL_MAX_DELAY);
     E32_WaitAUX();   // wait write complete
 
     // === BACK TO NORMAL ===

@@ -22,6 +22,9 @@ typedef enum {
 
 // --- Зовнішній UART, який використовується для E32 ---
 extern UART_HandleTypeDef huart1;
+// Зовнішній UART, який використовується для E32
+extern UART_HandleTypeDef *E32_UART;
+
 #define LORA_UART   (&huart2)
 // --- Буфер для приймання даних ---
 extern uint8_t LoRa_RX_Buffer[64];
